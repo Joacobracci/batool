@@ -19,6 +19,11 @@
                 <source src="{{ video.file.url }}" type="video/mp4">
                 Tu navegador no soporta el elemento video.
             </video>
+            <div class="video-actions">
+                <a href="{% url 'video_handler:bpmn_viewer' video.id %}" class="action-button view">
+                    <i class="fas fa-project-diagram"></i> Ver Diagrama BPMN
+                </a>
+            </div>
         </div>
 
         <div class="steps-section">
@@ -56,11 +61,11 @@
                             <td>{{ step.title }}</td>
                             <td>{{ step.description }}</td>
                             <td>
-                                <button onclick="seekVideo({{ step.start_time }})" class="time-button">
+                                <button onclick="seekVideo('{{ step.start_time }}')" class="time-button">
                                     {{ step.start_time }}s
                                 </button>
                                 -
-                                <button onclick="seekVideo({{ step.end_time }})" class="time-button">
+                                <button onclick="seekVideo('{{ step.end_time }}')" class="time-button">
                                     {{ step.end_time }}s
                                 </button>
                             </td>
@@ -70,6 +75,16 @@
                                 {% endif %}
                             </td>
                             <td class="action-buttons">
+                                <div class="order-controls">
+                                    <a href="{% url 'video_handler:reorder_step' step.id 'up' %}" class="order-button"
+                                        title="Mover arriba">
+                                        <i class="fas fa-arrow-up"></i>
+                                    </a>
+                                    <a href="{% url 'video_handler:reorder_step' step.id 'down' %}" class="order-button"
+                                        title="Mover abajo">
+                                        <i class="fas fa-arrow-down"></i>
+                                    </a>
+                                </div>
                                 <a href="{% url 'video_handler:edit_step' step.id %}" class="action-button edit"
                                     title="Editar">
                                     <i class="fas fa-edit"></i>

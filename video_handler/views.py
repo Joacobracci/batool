@@ -8,8 +8,11 @@ from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.db import models
 from django.db.models import F
 from .forms import VideoUploadForm, StepForm
-from .models import Video, Step
+from .models import Video, Step, BPMNDiagram
 from django.http import JsonResponse
+from django.core.serializers import serialize
+import json
+import xml.etree.ElementTree as ET
 
 # Create your views here.
 def index(request):
@@ -136,5 +139,127 @@ def delete_step(request, step_id):
         return redirect('video_handler:video_detail', video_id=video_id)
     
     return render(request, 'video_handler/confirm_delete_step.html', {'step': step})
+
+@login_required
+def reorder_step(request, step_id, direction):
+    step = get_object_or_404(Step, id=step_id, video__user=request.user)
+    
+    if direction == 'up':
+        step.move_up()
+    elif direction == 'down':
+        step.move_down()
+    
+    return redirect('video_handler:video_detail', video_id=step.video.id)
+
+@login_required
+def save_bpmn(request, video_id):
+    if request.method == 'POST':
+        video = get_object_or_404(Video, id=video_id, user=request.user)
+        xml_content = request.POST.get('xml')
+        
+        if xml_content:
+            diagram = BPMNDiagram.objects.create(
+                video=video,
+                xml_content=xml_content,
+                is_current=True
+            )
+            return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error'}, status=400)
+
+@login_required
+def load_bpmn(request, video_id):
+    video = get_object_or_404(Video, id=video_id, user=request.user)
+    diagram = BPMNDiagram.objects.filter(video=video, is_current=True).first()
+    
+    if diagram:
+        return JsonResponse({'xml': diagram.xml_content})
+    return JsonResponse({'status': 'no_diagram'})
+
+@login_required
+def bpmn_viewer(request, video_id):
+    video = get_object_or_404(Video, id=video_id, user=request.user)
+    steps = video.steps.all().order_by('order')
+    current_diagram = BPMNDiagram.objects.filter(video=video, is_current=True).first()
+    
+    steps_data = json.loads(serialize('json', steps))
+    context = {
+        'video': video,
+        'steps': json.dumps(steps_data),
+        'current_diagram': current_diagram.xml_content if current_diagram else None,
+    }
+    return render(request, 'video_handler/bpmn_viewer.html', context)
+
+@login_required
+def update_steps_from_bpmn(request, video_id):
+    if request.method == 'POST':
+        video = get_object_or_404(Video, id=video_id, user=request.user)
+        try:
+            xml_content = request.POST.get('xml')
+            
+            # Parsear el XML para extraer los pasos
+            root = ET.fromstring(xml_content)
+            
+            # Namespace para BPMN
+            ns = {'bpmn2': 'http://www.omg.org/spec/BPMN/20100524/MODEL'}
+            
+            # Obtener todos los elementos del proceso
+            process = root.find('.//bpmn2:process', ns)
+            
+            # Limpiar pasos existentes
+            video.steps.all().delete()
+            
+            # Crear nuevos pasos
+            order = 1
+            for element in process:
+                tag = element.tag.split('}')[-1]  # Remover namespace
+                
+                if tag in ['task', 'startEvent', 'endEvent', 'exclusiveGateway', 'parallelGateway', 'inclusiveGateway']:
+                    name = element.get('name', '')
+                    element_id = element.get('id', '')
+                    
+                    # Determinar el tipo de paso
+                    if tag == 'task':
+                        step_type = 'task'
+                        gateway_type = None
+                        is_start = False
+                        is_end = False
+                    elif tag == 'startEvent':
+                        step_type = 'event'
+                        gateway_type = None
+                        is_start = True
+                        is_end = False
+                    elif tag == 'endEvent':
+                        step_type = 'event'
+                        gateway_type = None
+                        is_start = False
+                        is_end = True
+                    else:  # Gateway
+                        step_type = 'gateway'
+                        gateway_type = tag.replace('Gateway', '').lower()
+                        is_start = False
+                        is_end = False
+                    
+                    # Crear el paso
+                    Step.objects.create(
+                        video=video,
+                        title=name,
+                        description=f"Generado desde BPMN - {tag}",
+                        step_type=step_type,
+                        gateway_type=gateway_type,
+                        is_start_event=is_start,
+                        is_end_event=is_end,
+                        order=order,
+                        start_time=0.0,  # Valores por defecto
+                        end_time=0.0,
+                        bpmn_id=element_id
+                    )
+                    order += 1
+            
+            return JsonResponse({'status': 'success'})
+            
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+            
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 

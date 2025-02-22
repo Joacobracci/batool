@@ -28,14 +28,16 @@
 
         .form-field {
             margin-bottom: 15px;
+            display: block;
         }
 
         .form-field label {
             display: block;
             margin-bottom: 5px;
-            color: #666;
+            font-weight: 500;
         }
 
+        .form-field select,
         .form-field input {
             width: 100%;
             padding: 8px;
@@ -360,9 +362,11 @@
             border-left: 4px solid #f44336;
         }
 
-        .step-number {
+        td.step-number {
             font-weight: bold;
             color: #4CAF50;
+            background: none;
+            padding: inherit;
         }
 
         .action-buttons {
@@ -520,6 +524,107 @@
             .videos-grid {
                 grid-template-columns: 1fr;
             }
+        }
+
+        .order-controls {
+            display: inline-flex;
+            gap: 5px;
+            margin-right: 10px;
+        }
+
+        .order-button {
+            background: #6c757d;
+            color: white;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .order-button:hover {
+            background: #5a6268;
+            text-decoration: none;
+            color: white;
+        }
+
+        /* Mejorar el estilo de los campos del formulario */
+        select[name="step_type"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        select[name="gateway_type"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+
+        .hidden-field {
+            display: none;
+        }
+
+        .gateway-field {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-top: 10px;
+            margin-bottom: 15px;
+        }
+
+        .gateway-field label {
+            color: #666;
+            font-weight: normal;
+        }
+
+        .gateway-field select {
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .order-input {
+            width: 80px !important;
+            text-align: center;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .gateway-select {
+            width: 100% !important;
+            padding: 8px !important;
+            border: 1px solid #ddd !important;
+            border-radius: 4px !important;
+        }
+
+        .step-type-select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        #gateway-container {
+            display: none;
+            /* Oculto por defecto */
+        }
+
+        #gateway-container.visible {
+            display: block;
+        }
+
+        /* Asegurar que los selects tengan el mismo estilo */
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
         }
     </style>
 </head>

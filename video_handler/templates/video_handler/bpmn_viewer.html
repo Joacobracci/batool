@@ -1,0 +1,378 @@
+{% extends "video_handler/base.html" %}
+
+{% block content %}
+<div class="dashboard-container">
+    <nav class="navbar">
+        <div class="nav-brand">Video Handler</div>
+        <div class="nav-menu">
+            <a href="{% url 'video_handler:video_detail' video.id %}" class="nav-link">Volver al Video</a>
+            <a href="{% url 'video_handler:logout' %}" class="nav-link">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <div class="content">
+        <div class="bpmn-container">
+            <h2>Diagrama BPMN: {{ video.title }}</h2>
+
+            <!-- Contenedor para el visor BPMN -->
+            <div id="canvas"></div>
+
+            <!-- Botones de acción -->
+            <div class="bpmn-actions">
+                <button id="saveBpmn" class="action-button">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+                <button id="downloadBpmn" class="action-button">
+                    <i class="fas fa-download"></i> Descargar BPMN
+                </button>
+                <label for="uploadBpmn" class="action-button" style="margin: 0;">
+                    <i class="fas fa-upload"></i> Cargar BPMN
+                </label>
+                <input type="file" id="uploadBpmn" accept=".bpmn,.xml" style="display: none;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BPMN.io dependencies -->
+<link rel="stylesheet" href="https://unpkg.com/bpmn-js@9.0.3/dist/assets/diagram-js.css">
+<link rel="stylesheet" href="https://unpkg.com/bpmn-js@9.0.3/dist/assets/bpmn-font/css/bpmn.css">
+<link rel="stylesheet" href="https://unpkg.com/bpmn-js@9.0.3/dist/assets/bpmn-js.css">
+
+<!-- Cambiar a solo usar el modeler -->
+<script src="https://unpkg.com/bpmn-js@9.0.3/dist/bpmn-modeler.production.min.js"></script>
+
+<!-- Añadir Font Awesome para los iconos -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<script>
+    // Crear el modelador BPMN
+    const bpmnModeler = new BpmnJS({
+        container: '#canvas',
+        keyboard: {
+            bindTo: document
+        }
+    });
+
+    // Obtener los datos del contexto de Django
+    const videoId = "{{ video.id }}";
+    const stepsData = JSON.parse('{{ steps|safe }}');
+
+    // Generar BPMN XML desde los pasos
+    function generateBpmnXml() {
+        // Usar stepsData en lugar de steps directamente
+        const steps = stepsData;
+
+        // Plantilla base del diagrama
+        const baseXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL"
+            xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+            xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+            xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+            id="sample-diagram"
+            targetNamespace="http://bpmn.io/schema/bpmn">
+            <bpmn2:process id="Process_1" isExecutable="false">
+                ${generateProcessElements(steps)}
+            </bpmn2:process>
+            <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+                <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+                    ${generateDiagramElements(steps)}
+                </bpmndi:BPMNPlane>
+            </bpmndi:BPMNDiagram>
+        </bpmn2:definitions>`;
+
+        return baseXml;
+    }
+
+    // Generar elementos del proceso
+    function generateProcessElements(steps) {
+        let elements = [];
+        let sequenceFlows = [];
+        let lastElement = null;
+
+        steps.forEach((step, index) => {
+            const fields = step.fields;
+            const elementId = `Element_${step.pk}`;
+            let element = '';
+
+            switch (fields.step_type) {
+                case 'task':
+                    element = `<bpmn2:task id="${elementId}" name="${fields.title}">
+                        ${lastElement ? `<bpmn2:incoming>Flow_${lastElement}_${elementId}</bpmn2:incoming>` : ''}
+                        <bpmn2:outgoing>Flow_${elementId}_next</bpmn2:outgoing>
+                    </bpmn2:task>`;
+                    break;
+
+                case 'gateway':
+                    element = `<bpmn2:${fields.gateway_type}Gateway id="${elementId}" name="${fields.title}">
+                        ${lastElement ? `<bpmn2:incoming>Flow_${lastElement}_${elementId}</bpmn2:incoming>` : ''}
+                        <bpmn2:outgoing>Flow_${elementId}_next</bpmn2:outgoing>
+                    </bpmn2:${fields.gateway_type}Gateway>`;
+                    break;
+
+                case 'event':
+                    if (fields.is_start_event) {
+                        element = `<bpmn2:startEvent id="${elementId}" name="${fields.title}">
+                            <bpmn2:outgoing>Flow_${elementId}_next</bpmn2:outgoing>
+                        </bpmn2:startEvent>`;
+                    } else if (fields.is_end_event) {
+                        element = `<bpmn2:endEvent id="${elementId}" name="${fields.title}">
+                            ${lastElement ? `<bpmn2:incoming>Flow_${lastElement}_${elementId}</bpmn2:incoming>` : ''}
+                        </bpmn2:endEvent>`;
+                    }
+                    break;
+            }
+
+            if (lastElement && !fields.is_start_event) {
+                sequenceFlows.push(`<bpmn2:sequenceFlow id="Flow_${lastElement}_${elementId}" 
+                    sourceRef="${lastElement}" targetRef="${elementId}" />`);
+            }
+
+            elements.push(element);
+            lastElement = elementId;
+        });
+
+        return elements.join('\n') + '\n' + sequenceFlows.join('\n');
+    }
+
+    // Generar elementos visuales del diagrama
+    function generateDiagramElements(steps) {
+        let elements = [];
+        let x = 150;
+        let y = 150;
+
+        steps.forEach((step, index) => {
+            const fields = step.fields;
+            const elementId = `Element_${step.pk}`;
+            let element = '';
+
+            // Ajustar posición según el tipo de elemento
+            switch (fields.step_type) {
+                case 'task':
+                    element = `<bpmndi:BPMNShape id="${elementId}_di" bpmnElement="${elementId}">
+                        <dc:Bounds x="${x}" y="${y}" width="100" height="80" />
+                    </bpmndi:BPMNShape>`;
+                    x += 150;
+                    break;
+
+                case 'gateway':
+                    element = `<bpmndi:BPMNShape id="${elementId}_di" bpmnElement="${elementId}">
+                        <dc:Bounds x="${x}" y="${y}" width="50" height="50" />
+                    </bpmndi:BPMNShape>`;
+                    x += 100;
+                    break;
+
+                case 'event':
+                    element = `<bpmndi:BPMNShape id="${elementId}_di" bpmnElement="${elementId}">
+                        <dc:Bounds x="${x}" y="${y}" width="36" height="36" />
+                    </bpmndi:BPMNShape>`;
+                    x += 100;
+                    break;
+            }
+
+            elements.push(element);
+        });
+
+        return elements.join('\n');
+    }
+
+    // Función para guardar el diagrama en la base de datos
+    async function saveDiagram() {
+        try {
+            const { xml } = await bpmnModeler.saveXML({ format: true });
+            const formData = new FormData();
+            formData.append('xml', xml);
+
+            // Guardar el diagrama BPMN
+            const saveResponse = await fetch(`/video/${videoId}/bpmn/save/`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+
+            if (!saveResponse.ok) {
+                throw new Error('Error al guardar el diagrama');
+            }
+
+            // Actualizar los pasos
+            const updateStepsResponse = await fetch(`/video/${videoId}/bpmn/update-steps/`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+
+            if (!updateStepsResponse.ok) {
+                throw new Error('Error al actualizar los pasos');
+            }
+
+            alert('Diagrama y pasos actualizados exitosamente');
+
+            // Recargar la página para mostrar los cambios
+            window.location.reload();
+        } catch (err) {
+            console.error('Error:', err);
+            alert('Error al guardar los cambios: ' + err.message);
+        }
+    }
+
+    // Función para cargar el diagrama inicial
+    async function loadDiagram() {
+        try {
+            // Intentar cargar diagrama existente
+            const response = await fetch(`/video/${videoId}/bpmn/load/`);
+            const data = await response.json();
+
+            let xml;
+            if (data.xml) {
+                xml = data.xml;
+            } else {
+                xml = generateBpmnXml(); // Generar nuevo si no existe
+            }
+
+            await bpmnModeler.importXML(xml);
+            bpmnModeler.get('canvas').zoom('fit-viewport');
+        } catch (err) {
+            console.error('Error:', err);
+        }
+    }
+
+    // Función auxiliar para obtener el token CSRF
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Manejar la carga de archivos BPMN
+    document.getElementById('uploadBpmn').addEventListener('change', async function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            const reader = new FileReader();
+
+            reader.onload = async function (e) {
+                try {
+                    const xml = e.target.result;
+
+                    // Importar el XML al modelador
+                    await bpmnModeler.importXML(xml);
+
+                    // Ajustar el zoom
+                    const canvas = bpmnModeler.get('canvas');
+                    canvas.zoom('fit-viewport');
+
+                    // Opcional: Guardar automáticamente en la base de datos
+                    await saveDiagram();
+
+                    alert('Diagrama BPMN cargado exitosamente');
+                } catch (err) {
+                    console.error('Error al importar el diagrama:', err);
+                    alert('Error al cargar el archivo BPMN. Asegúrate de que sea un archivo BPMN válido.');
+                }
+            };
+
+            reader.onerror = function () {
+                alert('Error al leer el archivo');
+            };
+
+            reader.readAsText(file);
+        } catch (err) {
+            console.error('Error al procesar el archivo:', err);
+            alert('Error al procesar el archivo');
+        }
+    });
+
+    // Manejar la descarga del diagrama
+    document.getElementById('downloadBpmn').addEventListener('click', async function () {
+        try {
+            const { xml } = await bpmnModeler.saveXML({ format: true });
+            const blob = new Blob([xml], { type: 'application/xml' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${document.title || 'diagram'}.bpmn`;
+            link.click();
+        } catch (err) {
+            console.error('Error al guardar el diagrama:', err);
+            alert('Error al descargar el diagrama BPMN');
+        }
+    });
+
+    // Agregar event listener para el botón de guardar
+    document.getElementById('saveBpmn').addEventListener('click', saveDiagram);
+
+    // Mover la inicialización al final del script
+    document.addEventListener('DOMContentLoaded', function () {
+        // Cargar el diagrama al iniciar
+        loadDiagram();
+    });
+</script>
+
+<style>
+    .bpmn-container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #canvas {
+        height: 70vh;
+        min-height: 600px;
+        border: 1px solid #ccc;
+        margin: 20px 0;
+    }
+
+    .bpmn-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+        justify-content: flex-end;
+    }
+
+    .action-button {
+        padding: 8px 16px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.3s;
+    }
+
+    .action-button:hover {
+        background-color: #45a049;
+    }
+
+    .action-button i {
+        font-size: 16px;
+    }
+
+    input[type="file"] {
+        display: none;
+    }
+
+    label.action-button {
+        margin: 0;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}

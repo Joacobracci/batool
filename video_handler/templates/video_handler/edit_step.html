@@ -27,7 +27,8 @@
             <form method="post" class="step-form">
                 {% csrf_token %}
                 {% for field in form %}
-                <div class="form-field">
+                <div class="form-field {% if field.name == 'gateway_type' %}gateway-field{% endif %}" {% if
+                    field.name=='gateway_type' %}id="gateway-container" {% endif %}>
                     {{ field.label_tag }}
                     {{ field }}
                     {% if field.errors %}
@@ -44,20 +45,25 @@
 </div>
 
 <script>
+    function handleStepTypeChange(select) {
+        const gatewayContainer = document.getElementById('gateway-container');
+        const gatewaySelect = document.querySelector('select[name="gateway_type"]');
+
+        if (select.value === 'gateway') {
+            gatewayContainer.style.display = 'block';
+            gatewaySelect.disabled = false;
+            gatewaySelect.required = true;
+        } else {
+            gatewayContainer.style.display = 'none';
+            gatewaySelect.disabled = true;
+            gatewaySelect.required = false;
+            gatewaySelect.value = '';
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const stepTypeSelect = document.querySelector('select[name="step_type"]');
-        const gatewayTypeField = document.querySelector('select[name="gateway_type"]').parentElement;
-
-        function toggleGatewayType() {
-            if (stepTypeSelect.value === 'gateway') {
-                gatewayTypeField.style.display = 'block';
-            } else {
-                gatewayTypeField.style.display = 'none';
-            }
-        }
-
-        stepTypeSelect.addEventListener('change', toggleGatewayType);
-        toggleGatewayType();
+        handleStepTypeChange(stepTypeSelect);
     });
 </script>
 {% endblock %}

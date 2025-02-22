@@ -13,20 +13,31 @@ class StepForm(forms.ModelForm):
     class Meta:
         model = Step
         fields = [
-            'title', 'description', 'step_type',
-            'start_time', 'end_time', 'is_start_event',
-            'is_end_event', 'gateway_type'
+            'order',
+            'title', 
+            'description', 
+            'step_type',
+            'start_time', 
+            'end_time', 
+            'is_start_event',
+            'is_end_event', 
+            'gateway_type'
         ]
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
             'start_time': forms.NumberInput(attrs={'step': '0.1'}),
             'end_time': forms.NumberInput(attrs={'step': '0.1'}),
+            'order': forms.NumberInput(attrs={'class': 'order-input'}),
+            'step_type': forms.Select(attrs={'class': 'step-type-select', 'onchange': 'handleStepTypeChange(this)'}),
+            'gateway_type': forms.Select(attrs={'class': 'gateway-select'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Inicializar el campo gateway_type como visible/oculto según step_type
-        if self.instance and self.instance.step_type == 'gateway':
-            self.fields['gateway_type'].widget.attrs['style'] = 'display: block;'
-        else:
-            self.fields['gateway_type'].widget.attrs['style'] = 'display: none;' 
+        self.fields['gateway_type'].required = False
+        
+        # No ocultamos el campo con style, lo manejaremos con CSS
+        self.fields['gateway_type'].widget.attrs.update({
+            'class': 'gateway-select',
+            'data-field-type': 'gateway'
+        }) 
