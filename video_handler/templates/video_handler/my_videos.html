@@ -1,0 +1,63 @@
+{% extends "video_handler/base.html" %}
+
+{% block content %}
+<div class="dashboard-container">
+    <nav class="navbar">
+        <div class="nav-brand">Video Handler</div>
+        <div class="nav-menu">
+            <a href="{% url 'video_handler:index' %}" class="nav-link">Inicio</a>
+            <a href="{% url 'video_handler:upload_video' %}" class="nav-link">Subir Video</a>
+            <a href="{% url 'video_handler:logout' %}" class="nav-link">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <div class="content">
+        <div class="welcome-section">
+            <h1>Mis Videos</h1>
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="{% if message.tags %}{{ message.tags }}{% endif %} message">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="videos-grid">
+            {% for video in videos %}
+            <div class="video-item">
+                <div class="video-preview">
+                    <video width="100%" preload="metadata">
+                        <source src="{{ video.file.url }}" type="video/mp4">
+                        Tu navegador no soporta el elemento video.
+                    </video>
+                    <div class="video-overlay">
+                        <span class="video-duration">{{ video.uploaded_at|date:"d/m/Y" }}</span>
+                    </div>
+                </div>
+                <div class="video-info">
+                    <h3 class="video-title">{{ video.title }}</h3>
+                    <p class="video-description">{{ video.description|truncatechars:100 }}</p>
+                    <div class="video-actions">
+                        <a href="{% url 'video_handler:video_detail' video.id %}" class="action-button view">
+                            <i class="fas fa-eye"></i> Ver Detalles
+                        </a>
+                        <span class="steps-count">{{ video.steps.count }} pasos</span>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="no-videos">
+                <p>No tienes videos subidos aún.</p>
+                <a href="{% url 'video_handler:upload_video' %}" class="submit-button">Subir Primer Video</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Añadir Font Awesome para los iconos -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+{% endblock %}

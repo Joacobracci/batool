@@ -1,0 +1,43 @@
+{% extends "video_handler/base.html" %}
+
+{% block content %}
+<div class="dashboard-container">
+    <nav class="navbar">
+        <div class="nav-brand">Video Handler</div>
+        <div class="nav-menu">
+            <a href="{% url 'video_handler:profile' %}" class="nav-link">Mi Perfil</a>
+            <a href="{% url 'video_handler:logout' %}" class="nav-link">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <div class="content">
+        <div class="welcome-section">
+            <h1>Bienvenido, {{ username }}!</h1>
+            <p>Último acceso: {{ last_login|date:"d/m/Y H:i" }}</p>
+        </div>
+
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="{% if message.tags %}{{ message.tags }}{% endif %} message">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="dashboard-cards">
+            <div class="card">
+                <h3>Mis Videos</h3>
+                <p>Gestiona tus videos subidos</p>
+                <a href="{% url 'video_handler:my_videos' %}" class="card-link">Ver Videos</a>
+            </div>
+            <div class="card">
+                <h3>Subir Video</h3>
+                <p>Sube un nuevo video a tu colección</p>
+                <a href="{% url 'video_handler:upload_video' %}" class="card-link">Subir</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

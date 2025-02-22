@@ -1,0 +1,63 @@
+{% extends "video_handler/base.html" %}
+
+{% block content %}
+<div class="dashboard-container">
+    <nav class="navbar">
+        <div class="nav-brand">Video Handler</div>
+        <div class="nav-menu">
+            <a href="{% url 'video_handler:video_detail' step.video.id %}" class="nav-link">Volver al Video</a>
+            <a href="{% url 'video_handler:logout' %}" class="nav-link">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <div class="content">
+        <div class="form-container" style="max-width: 600px;">
+            <h2 class="form-title">Editar Paso</h2>
+
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="{% if message.tags %}{{ message.tags }}{% endif %} message">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="post" class="step-form">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="form-field">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.errors %}
+                    <div class="error-message">
+                        {{ field.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="submit-button">Guardar Cambios</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const stepTypeSelect = document.querySelector('select[name="step_type"]');
+        const gatewayTypeField = document.querySelector('select[name="gateway_type"]').parentElement;
+
+        function toggleGatewayType() {
+            if (stepTypeSelect.value === 'gateway') {
+                gatewayTypeField.style.display = 'block';
+            } else {
+                gatewayTypeField.style.display = 'none';
+            }
+        }
+
+        stepTypeSelect.addEventListener('change', toggleGatewayType);
+        toggleGatewayType();
+    });
+</script>
+{% endblock %}
