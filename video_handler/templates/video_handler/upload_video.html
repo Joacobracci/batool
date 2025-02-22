@@ -1,0 +1,46 @@
+{% extends "video_handler/base.html" %}
+
+{% block content %}
+<div class="dashboard-container">
+    <nav class="navbar">
+        <div class="nav-brand">Video Handler</div>
+        <div class="nav-menu">
+            <a href="{% url 'video_handler:index' %}" class="nav-link">Inicio</a>
+            <a href="{% url 'video_handler:my_videos' %}" class="nav-link">Mis Videos</a>
+            <a href="{% url 'video_handler:logout' %}" class="nav-link">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <div class="content">
+        <div class="form-container" style="max-width: 600px;">
+            <h2 class="form-title">Subir Nuevo Video</h2>
+
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="{% if message.tags %}{{ message.tags }}{% endif %} message">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="form-field">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.errors %}
+                    <div class="error-message">
+                        {{ field.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="submit-button">Subir Video</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "video_handler/base.html" %}
+
+{% block content %}
+<div class="form-container">
+    <h2 class="form-title">Iniciar Sesión</h2>
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="{% if message.tags %}{{ message.tags }}{% endif %} error-message">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'video_handler:login' %}">
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="form-field">
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.errors %}
+            <div class="error-message">
+                {{ field.errors }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="submit-button">Iniciar Sesión</button>
+    </form>
+    <div style="text-align: center; margin-top: 20px;">
+        <p>¿No tienes una cuenta? <a href="{% url 'video_handler:signup' %}">Regístrate</a></p>
+    </div>
+</div>
+{% endblock %}

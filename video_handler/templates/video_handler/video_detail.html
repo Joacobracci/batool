@@ -1,0 +1,156 @@
+{% extends "video_handler/base.html" %}
+
+{% block content %}
+<div class="dashboard-container">
+    <nav class="navbar">
+        <div class="nav-brand">Video Handler</div>
+        <div class="nav-menu">
+            <a href="{% url 'video_handler:index' %}" class="nav-link">Inicio</a>
+            <a href="{% url 'video_handler:my_videos' %}" class="nav-link">Mis Videos</a>
+            <a href="{% url 'video_handler:logout' %}" class="nav-link">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <div class="content">
+        <div class="video-section">
+            <h1>{{ video.title }}</h1>
+            <p>{{ video.description }}</p>
+            <video width="100%" controls id="videoPlayer">
+                <source src="{{ video.file.url }}" type="video/mp4">
+                Tu navegador no soporta el elemento video.
+            </video>
+            <div class="video-actions">
+                <a href="{% url 'video_handler:bpmn_viewer' video.id %}" class="action-button view">
+                    <i class="fas fa-project-diagram"></i> Ver Diagrama BPMN
+                </a>
+            </div>
+        </div>
+
+        <div class="steps-section">
+            <h2>Pasos del Proceso</h2>
+
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="{% if message.tags %}{{ message.tags }}{% endif %} message">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="table-container">
+                <table class="steps-table">
+                    <thead>
+                        <tr>
+                            <th>Orden</th>
+                            <th>Tipo</th>
+                            <th>Título</th>
+                            <th>Descripción</th>
+                            <th>Tiempo</th>
+                            <th>Gateway</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for step in steps %}
+                        <tr
+                            class="{% if step.is_start_event %}start-event{% elif step.is_end_event %}end-event{% endif %}">
+                            <td class="step-number">{{ step.order }}</td>
+                            <td>{{ step.get_step_type_display }}</td>
+                            <td>{{ step.title }}</td>
+                            <td>{{ step.description }}</td>
+                            <td>
+                                <button onclick="seekVideo('{{ step.start_time }}')" class="time-button">
+                                    {{ step.start_time }}s
+                                </button>
+                                -
+                                <button onclick="seekVideo('{{ step.end_time }}')" class="time-button">
+                                    {{ step.end_time }}s
+                                </button>
+                            </td>
+                            <td>
+                                {% if step.gateway_type %}
+                                {{ step.get_gateway_type_display }}
+                                {% endif %}
+                            </td>
+                            <td class="action-buttons">
+                                <div class="order-controls">
+                                    <a href="{% url 'video_handler:reorder_step' step.id 'up' %}" class="order-button"
+                                        title="Mover arriba">
+                                        <i class="fas fa-arrow-up"></i>
+                                    </a>
+                                    <a href="{% url 'video_handler:reorder_step' step.id 'down' %}" class="order-button"
+                                        title="Mover abajo">
+                                        <i class="fas fa-arrow-down"></i>
+                                    </a>
+                                </div>
+                                <a href="{% url 'video_handler:edit_step' step.id %}" class="action-button edit"
+                                    title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'video_handler:delete_step' step.id %}" class="action-button delete"
+                                    title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No hay pasos definidos para este video.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="add-step-section">
+            <h2>Añadir Nuevo Paso</h2>
+            <form method="post" class="step-form">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="form-field">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.errors %}
+                    <div class="error-message">
+                        {{ field.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="submit-button">Añadir Paso</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Añadir Font Awesome para los iconos -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<script>
+    function seekVideo(time) {
+        const video = document.getElementById('videoPlayer');
+        video.currentTime = time;
+        video.play();
+    }
+
+    // Mostrar/ocultar gateway_type según el step_type seleccionado
+    document.addEventListener('DOMContentLoaded', function () {
+        const stepTypeSelect = document.querySelector('select[name="step_type"]');
+        const gatewayTypeField = document.querySelector('select[name="gateway_type"]').parentElement;
+
+        function toggleGatewayType() {
+            if (stepTypeSelect.value === 'gateway') {
+                gatewayTypeField.style.display = 'block';
+            } else {
+                gatewayTypeField.style.display = 'none';
+            }
+        }
+
+        stepTypeSelect.addEventListener('change', toggleGatewayType);
+        toggleGatewayType();
+    });
+</script>
+{% endblock %}
