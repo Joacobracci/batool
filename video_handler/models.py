@@ -1,16 +1,28 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from storages.backends.gcloud import GoogleCloudStorage
+
+gcs = GoogleCloudStorage()
 
 class Video(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    file = models.FileField(upload_to='videos/')
+    file = models.FileField(
+        upload_to='videos/',
+        storage=gcs
+    )
     uploaded_at = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.title
+
+    def get_file_url(self):
+        """Obtener URL firmada del video"""
+        if self.file:
+            return self.file.url
+        return None
 
 class Step(models.Model):
     STEP_TYPES = [

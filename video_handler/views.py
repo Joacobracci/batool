@@ -67,11 +67,14 @@ def upload_video(request):
     if request.method == 'POST':
         form = VideoUploadForm(request.POST, request.FILES)
         if form.is_valid():
-            video = form.save(commit=False)
-            video.user = request.user
-            video.save()
-            messages.success(request, '¡Video subido exitosamente!')
-            return redirect('video_handler:my_videos')
+            try:
+                video = form.save(commit=False)
+                video.user = request.user
+                video.save()
+                messages.success(request, 'Video subido exitosamente.')
+                return redirect('video_handler:my_videos')
+            except Exception as e:
+                messages.error(request, f'Error al subir el video: {str(e)}')
     else:
         form = VideoUploadForm()
     return render(request, 'video_handler/upload_video.html', {'form': form})
@@ -84,6 +87,7 @@ def my_videos(request):
 @login_required
 def video_detail(request, video_id):
     video = get_object_or_404(Video, id=video_id, user=request.user)
+    video_url = video.get_file_url()
     steps = video.steps.all()  # Obtiene todos los pasos ordenados por 'order'
     
     if request.method == 'POST':
@@ -100,6 +104,7 @@ def video_detail(request, video_id):
     
     context = {
         'video': video,
+        'video_url': video_url,
         'steps': steps,
         'form': form,
     }
